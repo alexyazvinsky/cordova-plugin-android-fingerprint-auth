@@ -206,24 +206,26 @@ public class FingerprintAuthenticationDialogFragment extends DialogFragment
             case NEW_FINGERPRINT_ENROLLED:
                 // Intentional fall through
             case BACKUP:
-                if (mStage == Stage.NEW_FINGERPRINT_ENROLLED) {
+                // if (mStage == Stage.NEW_FINGERPRINT_ENROLLED) {
 
-                }
-                if (!mKeyguardManager.isKeyguardSecure()) {
-                    // Show a message that the user hasn't set up a lock screen.
-                    int secure_lock_screen_required_id = getResources()
-                            .getIdentifier("secure_lock_screen_required", "string",
-                                    FingerprintAuth.packageName);
-                    Toast.makeText(getContext(),
-                            getString(secure_lock_screen_required_id),
-                            Toast.LENGTH_LONG).show();
-                    return;
-                }
-                if (FingerprintAuth.mDisableBackup) {
-                    FingerprintAuth.onError("backup disabled");
-                    return;
-                }
-                showAuthenticationScreen();
+                // }
+                // if (!mKeyguardManager.isKeyguardSecure()) {
+                //     // Show a message that the user hasn't set up a lock screen.
+                //     int secure_lock_screen_required_id = getResources()
+                //             .getIdentifier("secure_lock_screen_required", "string",
+                //                     FingerprintAuth.packageName);
+                //     Toast.makeText(getContext(),
+                //             getString(secure_lock_screen_required_id),
+                //             Toast.LENGTH_LONG).show();
+                //     return;
+                // }
+                // if (FingerprintAuth.mDisableBackup) {
+                //     FingerprintAuth.onError("backup disabled");
+                //     return;
+                // }
+                //showAuthenticationScreen();
+                FingerprintAuth.onBackupUsed();
+                dismissAllowingStateLoss();
                 break;
         }
     }
@@ -244,7 +246,7 @@ public class FingerprintAuthenticationDialogFragment extends DialogFragment
             if (resultCode == getActivity().RESULT_OK) {
                 FingerprintAuth.onAuthenticated(false /* used backup */, null);
             } else {
-                // The user canceled or didn’t complete the lock screen
+                // The user canceled or didnât complete the lock screen
                 // operation. Go to error/cancellation flow.
                 FingerprintAuth.onCancelled();
             }

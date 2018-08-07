@@ -98,7 +98,8 @@ public class FingerprintAuth extends CordovaPlugin {
         MISSING_ACTION_PARAMETERS,
         MISSING_PARAMETERS,
         NO_SUCH_ALGORITHM_EXCEPTION,
-        SECURITY_EXCEPTION
+        SECURITY_EXCEPTION,
+        BACKUP_USED        
     }
 
     public PluginAction mAction;
@@ -120,7 +121,6 @@ public class FingerprintAuth extends CordovaPlugin {
     public static boolean mDisableBackup = false;
     public static int mMaxAttempts = 6;  // one more than the device default to prevent a 2nd callback
     private String mLangCode = "en_US";
-    private static boolean mUserAuthRequired = false;
     public static String mDialogTitle;
     public static String mDialogMessage;
     public static String mDialogHint;
@@ -288,9 +288,6 @@ public class FingerprintAuth extends CordovaPlugin {
                             mMaxAttempts = maxAttempts;
                         }
                     }
-                    if (arg_object.has("userAuthRequired")) {
-                        mUserAuthRequired = arg_object.getBoolean("userAuthRequired");
-                    }
                     if (arg_object.has("dialogTitle")) {
                         mDialogTitle = arg_object.getString("dialogTitle");
                     }
@@ -389,18 +386,11 @@ public class FingerprintAuth extends CordovaPlugin {
                     boolean ivDeleted = false;
                     boolean secretKeyDeleted = false;
                     try {
-                        mKeyStore.load(null);
                         mKeyStore.deleteEntry(mClientId);
                         secretKeyDeleted = true;
                         ivDeleted = deleteIV();
                     } catch (KeyStoreException e) {
-                        Log.e(TAG, "Error while deleting SecretKey.", e);
-                    } catch (CertificateException e) {
-                        Log.e(TAG, "Error while deleting SecretKey.", e);
-                    } catch (NoSuchAlgorithmException e) {
-                        Log.e(TAG, "Error while deleting SecretKey.", e);
-                    } catch (IOException e) {
-                        Log.e(TAG, "Error while deleting SecretKey.", e);
+                        Log.e(TAG, "Error while deleting SecretKey.");
                     }
 
                     if (ivDeleted && secretKeyDeleted) {
@@ -559,7 +549,7 @@ public class FingerprintAuth extends CordovaPlugin {
             mKeyGenerator.init(new KeyGenParameterSpec.Builder(mClientId,
                     KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                     .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                    .setUserAuthenticationRequired(mUserAuthRequired)
+                    .setUserAuthenticationRequired(false)
                     .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
                     .build());
             mKeyGenerator.generateKey();
@@ -673,6 +663,10 @@ public class FingerprintAuth extends CordovaPlugin {
 
     public static void onCancelled() {
         mCallbackContext.error(PluginError.FINGERPRINT_CANCELLED.name());
+    }
+
+    public static void onBackupUsed() {
+        mCallbackContext.error(PluginError.BACKUP_USED.name());
     }
 
     public static void onError(CharSequence errString) {

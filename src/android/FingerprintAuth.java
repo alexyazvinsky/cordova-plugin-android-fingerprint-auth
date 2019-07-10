@@ -77,7 +77,8 @@ public class FingerprintAuth extends CordovaPlugin {
         AVAILABILITY,
         ENCRYPT,
         DECRYPT,
-        DELETE
+        DELETE,
+        DISMISS
     }
 
     public enum PluginError {
@@ -99,7 +100,8 @@ public class FingerprintAuth extends CordovaPlugin {
         MISSING_PARAMETERS,
         NO_SUCH_ALGORITHM_EXCEPTION,
         SECURITY_EXCEPTION,
-        BACKUP_USED        
+        FRAGMENT_NOT_EXIST,
+	  BACKUP_USED
     }
 
     public PluginAction mAction;
@@ -121,6 +123,7 @@ public class FingerprintAuth extends CordovaPlugin {
     public static boolean mDisableBackup = false;
     public static int mMaxAttempts = 6;  // one more than the device default to prevent a 2nd callback
     private String mLangCode = "en_US";
+    private static boolean mUserAuthRequired = false;
     public static String mDialogTitle;
     public static String mDialogMessage;
     public static String mDialogHint;
@@ -210,6 +213,8 @@ public class FingerprintAuth extends CordovaPlugin {
             mCipherModeCrypt = false;
         } else if (action.equals("delete")) {
             mAction = PluginAction.DELETE;
+        } else if (action.equals("dismiss")) {
+            mAction = PluginAction.DISMISS;
         }
 
         if (mAction != null) {
@@ -217,7 +222,7 @@ public class FingerprintAuth extends CordovaPlugin {
 
             JSONObject resultJson = new JSONObject();
 
-            if (mAction != PluginAction.AVAILABILITY) {
+            if (mAction != PluginAction.AVAILABILITY && mAction != PluginAction.DISMISS) {
                 if (!arg_object.has("clientId")) {
                     Log.e(TAG, "Missing required parameters.");
                     mPluginResult = new PluginResult(PluginResult.Status.ERROR);
@@ -287,6 +292,9 @@ public class FingerprintAuth extends CordovaPlugin {
                         if (maxAttempts < 5) {
                             mMaxAttempts = maxAttempts;
                         }
+                    }
+                    if (arg_object.has("userAuthRequired")) {
+                        mUserAuthRequired = arg_object.getBoolean("userAuthRequired");
                     }
                     if (arg_object.has("dialogTitle")) {
                         mDialogTitle = arg_object.getString("dialogTitle");
@@ -386,11 +394,18 @@ public class FingerprintAuth extends CordovaPlugin {
                     boolean ivDeleted = false;
                     boolean secretKeyDeleted = false;
                     try {
+                        mKeyStore.load(null);
                         mKeyStore.deleteEntry(mClientId);
                         secretKeyDeleted = true;
                         ivDeleted = deleteIV();
                     } catch (KeyStoreException e) {
-                        Log.e(TAG, "Error while deleting SecretKey.");
+                        Log.e(TAG, "Error while deleting SecretKey.", e);
+                    } catch (CertificateException e) {
+                        Log.e(TAG, "Error while deleting SecretKey.", e);
+                    } catch (NoSuchAlgorithmException e) {
+                        Log.e(TAG, "Error while deleting SecretKey.", e);
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error while deleting SecretKey.", e);
                     }
 
                     if (ivDeleted && secretKeyDeleted) {
@@ -402,6 +417,17 @@ public class FingerprintAuth extends CordovaPlugin {
                         mCallbackContext.error(PluginError.FINGERPRINT_DATA_NOT_DELETED.name());
                     }
                     mCallbackContext.sendPluginResult(mPluginResult);
+                    return true;
+                case DISMISS:
+                    if (null != mFragment) {
+                        cordova.getActivity().getFragmentManager()
+                                .beginTransaction().remove(mFragment).commit();
+                        mPluginResult = new PluginResult(PluginResult.Status.OK);
+                        mCallbackContext.success("Fragment dismissed");
+                        mCallbackContext.sendPluginResult(mPluginResult);
+                    } else {
+                        setPluginResultError(PluginError.FRAGMENT_NOT_EXIST.name());
+                    }
                     return true;
             }
         }
@@ -549,7 +575,7 @@ public class FingerprintAuth extends CordovaPlugin {
             mKeyGenerator.init(new KeyGenParameterSpec.Builder(mClientId,
                     KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                     .setBlockModes(KeyProperties.BLOCK_MODE_CBC)
-                    .setUserAuthenticationRequired(false)
+                    .setUserAuthenticationRequired(mUserAuthRequired)
                     .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_PKCS7)
                     .build());
             mKeyGenerator.generateKey();

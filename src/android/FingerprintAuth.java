@@ -379,7 +379,9 @@ public class FingerprintAuth extends CordovaPlugin {
                                 }
 
                                 if (useBackupLockScreen()) {
-                                    showAuthenticationScreen();
+                                    //do not need to show native authentication backup
+                                    //showAuthenticationScreen();
+                                    mCallbackContext.error(PluginError.BACKUP_USED.name());
                                 } else {
                                     Log.e(TAG, "Fingerprint authentication not available");
                                     mPluginResult = new PluginResult(PluginResult.Status.ERROR);
